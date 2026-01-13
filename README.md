@@ -2,7 +2,7 @@
 
 A static website for exam preparation that can be hosted on GitHub Pages. Features HTML lecture slides, notes, and exercises with fuzzy search capability and MathJax support for mathematical notation.
 
-## 🚀 Quick Start
+## 🚀 Quick Start yeeee
 
 ### Deploying to GitHub Pages
 
