@@ -8,13 +8,14 @@ class FuzzySearch {
         this.fuseSlides = null;
         this.fuseNotes = null;
         this.fuseExercises = null;
+        this.fuseExams = null;
         this.fuseAll = null;
     }
 
     /**
      * Initialize Fuse.js instances with data
      */
-    initialize(slides, notes, exercises) {
+    initialize(slides, notes, exercises, exams = [], studyGuide = []) {
         // Fuse.js options for fuzzy matching
         const baseOptions = {
             includeScore: true,
@@ -59,11 +60,25 @@ class FuzzySearch {
             ]
         });
 
+        // Exams search configuration
+        this.fuseExams = new Fuse(exams, {
+            ...baseOptions,
+            keys: [
+                { name: 'title', weight: 2 },
+                { name: 'topic', weight: 1.5 },
+                { name: 'description', weight: 1 },
+                { name: 'keywords', weight: 1.5 },
+                { name: 'year', weight: 1 }
+            ]
+        });
+
         // Combined search for global search
         const allItems = [
             ...slides.map(s => ({ ...s, type: 'slide' })),
             ...notes.map(n => ({ ...n, type: 'note' })),
-            ...exercises.map(e => ({ ...e, type: 'exercise' }))
+            ...exercises.map(e => ({ ...e, type: 'exercise' })),
+            ...exams.map(e => ({ ...e, type: 'exam' })),
+            ...studyGuide.map(s => ({ ...s, type: 'study-guide' }))
         ];
 
         this.fuseAll = new Fuse(allItems, {
@@ -133,6 +148,21 @@ class FuzzySearch {
     searchExercises(query) {
         if (!query || !this.fuseExercises) return [];
         const results = this.fuseExercises.search(query);
+        return results
+            .filter(result => result.score < 0.4)
+            .map(result => ({
+                ...result.item,
+                score: result.score,
+                matches: result.matches
+            }));
+    }
+
+    /**
+     * Search only exams
+     */
+    searchExams(query) {
+        if (!query || !this.fuseExams) return [];
+        const results = this.fuseExams.search(query);
         return results
             .filter(result => result.score < 0.4)
             .map(result => ({

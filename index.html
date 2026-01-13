@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,6 +21,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
+
 <body>
     <header>
         <div class="header-content">
@@ -31,10 +33,17 @@
         </div>
         <nav>
             <ul>
-                <li><a href="#" class="nav-link active" data-section="dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
-                <li><a href="#" class="nav-link" data-section="slides"><i class="fas fa-chalkboard"></i> Lecture Slides</a></li>
+                <li><a href="#" class="nav-link active" data-section="dashboard"><i class="fas fa-home"></i>
+                        Dashboard</a></li>
+                <li><a href="#" class="nav-link" data-section="slides"><i class="fas fa-chalkboard"></i> Lecture
+                        Slides</a></li>
                 <li><a href="#" class="nav-link" data-section="notes"><i class="fas fa-sticky-note"></i> Notes</a></li>
-                <li><a href="#" class="nav-link" data-section="exercises"><i class="fas fa-pencil-alt"></i> Exercises</a></li>
+                <li><a href="#" class="nav-link" data-section="exercises"><i class="fas fa-pencil-alt"></i>
+                        Exercises</a></li>
+                <li><a href="#" class="nav-link" data-section="past-exams"><i class="fas fa-file-alt"></i> Past
+                        Exams</a></li>
+                <li><a href="#" class="nav-link" data-section="study-guide"><i class="fas fa-book-open"></i> Study
+                        Guide</a></li>
             </ul>
         </nav>
     </header>
@@ -58,6 +67,16 @@
                     <i class="fas fa-pencil-alt"></i>
                     <h3>Exercises</h3>
                     <p class="count" id="exercises-count">0 exercises</p>
+                </div>
+                <div class="dashboard-card" data-goto="past-exams">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>Past Exams</h3>
+                    <p class="count" id="exams-count">0 exams</p>
+                </div>
+                <div class="dashboard-card" data-goto="study-guide">
+                    <i class="fas fa-book-open"></i>
+                    <h3>Study Guide</h3>
+                    <p class="count">Practice problems & solutions</p>
                 </div>
             </div>
 
@@ -84,7 +103,8 @@
                     <div class="modal-header">
                         <h3 id="slide-title"></h3>
                         <div class="modal-actions">
-                            <a href="#" id="slide-open-new" target="_blank" class="btn-open-new" title="Open in new tab"><i class="fas fa-external-link-alt"></i></a>
+                            <a href="#" id="slide-open-new" target="_blank" class="btn-open-new"
+                                title="Open in new tab"><i class="fas fa-external-link-alt"></i></a>
                             <button class="close-modal"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
@@ -118,10 +138,48 @@
             </div>
             <div class="exercises-list" id="exercises-container"></div>
         </section>
+
+        <!-- Past Exams Section -->
+        <section id="past-exams" class="content-section">
+            <h2><i class="fas fa-file-alt"></i> Past Exams</h2>
+            <div class="filter-bar">
+                <input type="text" id="exams-search" placeholder="Search exams...">
+                <select id="exams-topic-filter">
+                    <option value="">All Topics</option>
+                </select>
+            </div>
+            <div class="exams-grid" id="exams-container"></div>
+
+            <!-- Exam Viewer Modal -->
+            <div class="modal" id="exam-modal">
+                <div class="modal-content exam-viewer">
+                    <div class="modal-header">
+                        <h3 id="exam-title"></h3>
+                        <div class="modal-actions">
+                            <a href="#" id="exam-open-new" target="_blank" class="btn-open-new"
+                                title="Open in new tab"><i class="fas fa-external-link-alt"></i></a>
+                            <button class="close-modal close-exam-modal"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div class="exam-container">
+                        <iframe id="exam-iframe" src=""></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Study Guide Section -->
+        <section id="study-guide" class="content-section">
+            <h2><i class="fas fa-book-open"></i> Comprehensive Study Guide</h2>
+            <div class="study-guide-container">
+                <iframe id="study-guide-iframe" src="study_guide.html"></iframe>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>Good luck, and may the odds be ever in your favor! <img src="assets/WhiteRoseEmoji.png" alt="??" class="emoji-img"></p>
+        <p>Good luck, and may the odds be ever in your favor! <img src="assets/WhiteRoseEmoji.png" alt="??"
+                class="emoji-img"></p>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
@@ -129,5 +187,5 @@
     <script src="js/search.js"></script>
     <script src="js/app.js"></script>
 </body>
-</html>
 
+</html>

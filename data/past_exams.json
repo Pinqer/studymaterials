@@ -1,0 +1,49 @@
+{
+    "exams": [
+        {
+            "id": "exam-2022",
+            "title": "January 2022 Exam",
+            "description": "Covers probability warmup, random variable generation, concentration of measure, SMS spam filtering, and Markov chains",
+            "topic": "Past Exams",
+            "year": 2022,
+            "examPath": "past_exams/Exam_January_2022.html",
+            "keywords": [
+                "probability",
+                "random variables",
+                "LCG",
+                "accept-reject",
+                "concentration",
+                "Hoeffding",
+                "Markov chains",
+                "transition matrix",
+                "stationary distribution"
+            ]
+        },
+        {
+            "id": "exam-2023",
+            "title": "January 2023 Exam",
+            "description": "Past exam problems from January 2023",
+            "topic": "Past Exams",
+            "year": 2023,
+            "examPath": "past_exams/Exam_January_2023.html",
+            "keywords": [
+                "exam",
+                "practice",
+                "2023"
+            ]
+        },
+        {
+            "id": "exam-2024",
+            "title": "January 2024 Exam",
+            "description": "Past exam problems from January 2024",
+            "topic": "Past Exams",
+            "year": 2024,
+            "examPath": "past_exams/Exam_January_2024.html",
+            "keywords": [
+                "exam",
+                "practice",
+                "2024"
+            ]
+        }
+    ]
+}

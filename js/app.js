@@ -9,6 +9,7 @@ class App {
         this.slides = [];
         this.notes = [];
         this.exercises = [];
+        this.exams = [];
     }
 
     async init() {
@@ -17,9 +18,10 @@ class App {
         this.slides = data.slides;
         this.notes = data.notes;
         this.exercises = data.exercises;
+        this.exams = data.exams;
 
-        // Initialize fuzzy search
-        fuzzySearch.initialize(this.slides, this.notes, this.exercises);
+        // Initialize fuzzy search with study guide content
+        fuzzySearch.initialize(this.slides, this.notes, this.exercises, this.exams, data.studyGuide);
 
         // Update dashboard counts
         this.updateDashboardCounts();
@@ -28,6 +30,7 @@ class App {
         this.renderSlides(this.slides);
         this.renderNotes(this.notes);
         this.renderExercises(this.exercises);
+        this.renderExams(this.exams);
 
         // Populate filter dropdowns
         this.populateFilters();
@@ -40,6 +43,7 @@ class App {
         document.getElementById('slides-count').textContent = `${this.slides.length} slides`;
         document.getElementById('notes-count').textContent = `${this.notes.length} notes`;
         document.getElementById('exercises-count').textContent = `${this.exercises.length} exercises`;
+        document.getElementById('exams-count').textContent = `${this.exams.length} exams`;
     }
 
     populateFilters() {
@@ -63,6 +67,13 @@ class App {
         const exercisesTopicFilter = document.getElementById('exercises-topic-filter');
         exerciseTopics.forEach(topic => {
             exercisesTopicFilter.innerHTML += `<option value="${topic}">${topic}</option>`;
+        });
+
+        // Exams topic filter
+        const examsTopicFilter = document.getElementById('exams-topic-filter');
+        const examTopics = dataLoader.getExamTopics();
+        examTopics.forEach(topic => {
+            examsTopicFilter.innerHTML += `<option value="${topic}">${topic}</option>`;
         });
     }
 
@@ -98,11 +109,13 @@ class App {
         this.setupSectionSearch('slides-search', this.filterSlides.bind(this));
         this.setupSectionSearch('notes-search', this.filterNotes.bind(this));
         this.setupSectionSearch('exercises-search', this.filterExercises.bind(this));
+        this.setupSectionSearch('exams-search', this.filterExams.bind(this));
 
         // Filter dropdowns
         document.getElementById('slides-topic-filter').addEventListener('change', () => this.applyFilters('slides'));
         document.getElementById('notes-topic-filter').addEventListener('change', () => this.applyFilters('notes'));
         document.getElementById('exercises-topic-filter').addEventListener('change', () => this.applyFilters('exercises'));
+        document.getElementById('exams-topic-filter').addEventListener('change', () => this.applyFilters('exams'));
 
         // Modal close
         document.querySelector('.close-modal').addEventListener('click', () => {
@@ -116,10 +129,22 @@ class App {
             }
         });
 
+        // Exam modal close
+        document.querySelector('.close-exam-modal').addEventListener('click', () => {
+            document.getElementById('exam-modal').classList.remove('active');
+        });
+
+        document.getElementById('exam-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                e.currentTarget.classList.remove('active');
+            }
+        });
+
         // Escape key to close modal
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 document.getElementById('slide-modal').classList.remove('active');
+                document.getElementById('exam-modal').classList.remove('active');
             }
         });
     }
@@ -174,16 +199,28 @@ class App {
         } else {
             searchResultsContainer.innerHTML = results.slice(0, 10).map(result => {
                 const typeLabel = result.type === 'slide' ? 'Slide' :
-                                  result.type === 'note' ? 'Note' : 'Exercise';
+                    result.type === 'note' ? 'Note' :
+                        result.type === 'exam' ? 'Exam' :
+                            result.type === 'study-guide' ? 'Study Guide' : 'Exercise';
 
                 let excerpt = '';
                 if (result.type === 'slide') {
                     excerpt = fuzzySearch.getExcerpt(result.description || '', result.matches, 'description');
                 } else if (result.type === 'note') {
                     excerpt = fuzzySearch.getExcerpt(result.content || '', result.matches, 'content');
+                } else if (result.type === 'study-guide') {
+                    excerpt = fuzzySearch.getExcerpt(result.content || '', result.matches, 'content');
                 } else {
                     excerpt = fuzzySearch.getExcerpt(result.question || '', result.matches, 'question');
                 }
+
+                return `
+                    <div class="search-result-item" data-type="${result.type}" data-id="${result.id}">
+                        <span class="result-type ${result.type}">${typeLabel}</span>
+                        <span class="result-title">${fuzzySearch.highlightMatches(result.title, result.matches, 'title')}</span>
+                        <p class="result-excerpt">${excerpt}</p>
+                    </div>
+                `;
 
                 return `
                     <div class="search-result-item" data-type="${result.type}" data-id="${result.id}">
@@ -210,11 +247,14 @@ class App {
     navigateToItem(type, id) {
         if (type === 'slide') {
             this.navigateTo('slides');
-            // Could scroll to specific slide
         } else if (type === 'note') {
             this.navigateTo('notes');
         } else if (type === 'exercise') {
             this.navigateTo('exercises');
+        } else if (type === 'exam') {
+            this.navigateTo('past-exams');
+        } else if (type === 'study-guide') {
+            this.navigateTo('study-guide');
         }
     }
 
@@ -243,6 +283,15 @@ class App {
         }
         const results = fuzzySearch.searchExercises(query);
         this.renderExercises(results);
+    }
+
+    filterExams(query) {
+        if (!query) {
+            this.applyFilters('exams');
+            return;
+        }
+        const results = fuzzySearch.searchExams(query);
+        this.renderExams(results);
     }
 
     applyFilters(section) {
@@ -288,6 +337,20 @@ class App {
                 filtered = filtered.filter(e => searchIds.has(e.id));
             }
             this.renderExercises(filtered);
+        } else if (section === 'exams') {
+            const topic = document.getElementById('exams-topic-filter').value;
+            const query = document.getElementById('exams-search').value;
+
+            let filtered = this.exams;
+            if (topic) {
+                filtered = filtered.filter(e => e.topic === topic);
+            }
+            if (query) {
+                const searchResults = fuzzySearch.searchExams(query);
+                const searchIds = new Set(searchResults.map(r => r.id));
+                filtered = filtered.filter(e => searchIds.has(e.id));
+            }
+            this.renderExams(filtered);
         }
     }
 
@@ -494,6 +557,55 @@ class App {
         if (window.MathJax) {
             MathJax.typesetPromise([container]).catch((err) => console.log('MathJax error:', err));
         }
+    }
+
+    renderExams(exams) {
+        const container = document.getElementById('exams-container');
+
+        if (exams.length === 0) {
+            container.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-file-alt"></i>
+                    <p>No exams found</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = exams.map(exam => `
+            <div class="exam-card" data-exam-path="${exam.examPath}" data-title="${exam.title}">
+                <div class="exam-thumbnail">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="exam-info">
+                    <h4>${exam.title}</h4>
+                    <p>${exam.description || ''}</p>
+                    <span class="exam-year">${exam.year}</span>
+                </div>
+            </div>
+        `).join('');
+
+        // Add click handlers for exam viewing
+        container.querySelectorAll('.exam-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const examPath = card.dataset.examPath;
+                const title = card.dataset.title;
+                this.openExamViewer(examPath, title);
+            });
+        });
+    }
+
+    openExamViewer(examPath, title) {
+        const modal = document.getElementById('exam-modal');
+        const iframe = document.getElementById('exam-iframe');
+        const titleEl = document.getElementById('exam-title');
+        const openNewLink = document.getElementById('exam-open-new');
+
+        titleEl.textContent = title;
+        // Load HTML file directly
+        iframe.src = examPath;
+        openNewLink.href = examPath;
+        modal.classList.add('active');
     }
 }
 
