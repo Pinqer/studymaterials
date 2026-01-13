@@ -8,7 +8,7 @@ with open('study_guide.md', 'r', encoding='utf-8') as f:
 # Properly escape for JSON
 content_json = json.dumps(content)
 
-# HTML template with fixed syntax highlighting
+# HTML template with in-page search bar
 html_template = """<!DOCTYPE html>
 <html>
 <head>
@@ -40,9 +40,60 @@ html_template = """<!DOCTYPE html>
             line-height: 1.6;
             max-width: 900px;
             margin: 0 auto;
-            padding: 20px 40px;
+            padding: 60px 40px 20px 40px;
             background: #fff;
             color: #333;
+        }
+        /* Floating search bar */
+        .search-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .search-bar input {
+            flex: 1;
+            max-width: 500px;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        .search-bar button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .search-bar button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .search-info {
+            color: white;
+            font-size: 14px;
+            min-width: 100px;
+        }
+        /* Highlight for search matches */
+        .search-highlight {
+            background-color: #ffeb3b !important;
+            color: #000 !important;
+            padding: 2px 0;
+            border-radius: 2px;
+        }
+        .search-highlight.current {
+            background-color: #ff9800 !important;
         }
         h1 { 
             border-bottom: 3px solid #007acc; 
@@ -81,7 +132,6 @@ html_template = """<!DOCTYPE html>
             font-size: 14px;
             line-height: 1.5;
         }
-        /* Override highlight.js defaults for better visibility */
         .hljs {
             background: #000 !important;
             color: #eaeaea !important;
@@ -130,12 +180,21 @@ html_template = """<!DOCTYPE html>
     </style>
 </head>
 <body>
+    <!-- Floating Search Bar -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search in page (Ctrl+F)..." onkeydown="if(event.key==='Enter'){findNext()}">
+        <button onclick="findPrev()">◀ Prev</button>
+        <button onclick="findNext()">Next ▶</button>
+        <button onclick="clearSearch()">Clear</button>
+        <span class="search-info" id="searchInfo"></span>
+    </div>
+    
     <div id="content"></div>
+    
     <script>
         const markdownContent = """ + content_json + """;
         
-        // Configure marked WITHOUT custom highlight function
-        // We'll use hljs.highlightAll() instead
+        // Configure marked
         marked.setOptions({
             breaks: true,
             gfm: true
@@ -144,15 +203,170 @@ html_template = """<!DOCTYPE html>
         // Render markdown
         document.getElementById('content').innerHTML = marked.parse(markdownContent);
         
-        // Apply syntax highlighting to all code blocks AFTER rendering
+        // Apply syntax highlighting
         hljs.highlightAll();
         
-        // Trigger MathJax after rendering
+        // Trigger MathJax
         if (window.MathJax) {
             MathJax.typesetPromise().then(() => {
                 console.log('MathJax rendering complete');
             }).catch((err) => console.log('MathJax error:', err));
         }
+        
+        // In-page search functionality
+        let searchMatches = [];
+        let currentMatchIndex = -1;
+        let originalContent = '';
+        
+        function saveOriginalContent() {
+            if (!originalContent) {
+                originalContent = document.getElementById('content').innerHTML;
+            }
+        }
+        
+        function clearSearch() {
+            if (originalContent) {
+                document.getElementById('content').innerHTML = originalContent;
+                hljs.highlightAll();
+                if (window.MathJax) {
+                    MathJax.typesetPromise();
+                }
+            }
+            searchMatches = [];
+            currentMatchIndex = -1;
+            document.getElementById('searchInfo').textContent = '';
+            document.getElementById('searchInput').value = '';
+        }
+        
+        function findMatches(query) {
+            saveOriginalContent();
+            
+            if (!query || query.length < 2) {
+                clearSearch();
+                return;
+            }
+            
+            // Restore original first
+            document.getElementById('content').innerHTML = originalContent;
+            
+            const contentEl = document.getElementById('content');
+            const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT, null, false);
+            const textNodes = [];
+            let node;
+            
+            while (node = walker.nextNode()) {
+                // Skip nodes inside code blocks
+                if (!node.parentElement.closest('pre') && !node.parentElement.closest('code')) {
+                    textNodes.push(node);
+                }
+            }
+            
+            searchMatches = [];
+            const queryLower = query.toLowerCase();
+            
+            textNodes.forEach(textNode => {
+                const text = textNode.textContent;
+                const textLower = text.toLowerCase();
+                let index = 0;
+                
+                while ((index = textLower.indexOf(queryLower, index)) !== -1) {
+                    searchMatches.push({
+                        node: textNode,
+                        start: index,
+                        length: query.length
+                    });
+                    index += query.length;
+                }
+            });
+            
+            // Highlight matches (reverse order to preserve indices)
+            for (let i = searchMatches.length - 1; i >= 0; i--) {
+                const match = searchMatches[i];
+                const text = match.node.textContent;
+                const before = text.substring(0, match.start);
+                const matchText = text.substring(match.start, match.start + match.length);
+                const after = text.substring(match.start + match.length);
+                
+                const span = document.createElement('span');
+                span.className = 'search-highlight';
+                span.textContent = matchText;
+                span.setAttribute('data-match-index', i);
+                
+                const frag = document.createDocumentFragment();
+                if (before) frag.appendChild(document.createTextNode(before));
+                frag.appendChild(span);
+                if (after) frag.appendChild(document.createTextNode(after));
+                
+                match.node.parentNode.replaceChild(frag, match.node);
+            }
+            
+            currentMatchIndex = -1;
+            updateSearchInfo();
+            
+            if (searchMatches.length > 0) {
+                findNext();
+            }
+        }
+        
+        function findNext() {
+            const highlights = document.querySelectorAll('.search-highlight');
+            if (highlights.length === 0) {
+                const query = document.getElementById('searchInput').value;
+                if (query) findMatches(query);
+                return;
+            }
+            
+            // Remove current highlight
+            highlights.forEach(h => h.classList.remove('current'));
+            
+            currentMatchIndex = (currentMatchIndex + 1) % highlights.length;
+            const current = highlights[currentMatchIndex];
+            current.classList.add('current');
+            current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            updateSearchInfo();
+        }
+        
+        function findPrev() {
+            const highlights = document.querySelectorAll('.search-highlight');
+            if (highlights.length === 0) return;
+            
+            highlights.forEach(h => h.classList.remove('current'));
+            
+            currentMatchIndex = currentMatchIndex <= 0 ? highlights.length - 1 : currentMatchIndex - 1;
+            const current = highlights[currentMatchIndex];
+            current.classList.add('current');
+            current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            updateSearchInfo();
+        }
+        
+        function updateSearchInfo() {
+            const highlights = document.querySelectorAll('.search-highlight');
+            if (highlights.length === 0) {
+                document.getElementById('searchInfo').textContent = 'No matches';
+            } else {
+                document.getElementById('searchInfo').textContent = 
+                    `${currentMatchIndex + 1} of ${highlights.length}`;
+            }
+        }
+        
+        // Debounce search
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                findMatches(e.target.value);
+            }, 300);
+        });
+        
+        // Ctrl+F shortcut
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+        });
     </script>
 </body>
 </html>
@@ -162,4 +376,4 @@ html_template = """<!DOCTYPE html>
 with open('study_guide.html', 'w', encoding='utf-8') as f:
     f.write(html_template)
 
-print("Conversion complete! study_guide.html created with proper syntax highlighting.")
+print("Conversion complete! study_guide.html created with in-page search.")
